@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Screening</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+</head>
+<body class="font-sans bg-glassmorphism">
+    <header class="glass-header">
+        <div class="container mx-auto text-white">
+            <h1 class="text-2xl font-bold">Resume Screening</h1>
+        </div>
+    </header>
+
+    <div class="container mx-auto mt-8 p-6 bg-glassmorphism rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold text-center mb-4">Upload Your Resume</h2>
+
+        <form method="post" action="/predict" enctype="multipart/form-data">
+            <label for="resume" class="block mb-2">Upload Your Resume:</label>
+            <input type="file" name="file" accept=".txt, .pdf, .docx" class="glass-input mb-4 ">
+            <button type="submit" class="glass-button">Submit</button>
+        </form>
+
+        {% if prediction %}
+            <h2 class="text-xl font-semibold mt-4">Predicted Category: {{ prediction }}</h2>
+        {% endif %}
+    </div>
+</body>
+</html>

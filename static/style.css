@@ -1,0 +1,59 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #c6dbf0; 
+    color: #212529; 
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 600px;
+    margin: 50px auto;
+    background-color: #e9e6e6; 
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.glass-input,
+.glass-button {
+    background: rgba(255, 255, 255, 0.567);
+    backdrop-filter: blur(10px); 
+    border: none;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+    width: calc(100% - 2rem); 
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box; 
+}
+
+.glass-button {
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    color: #fff; 
+    background-color: #3498db; 
+}
+
+.glass-button:hover {
+    background-color: #2980b9; 
+    transform: scale(1.05); 
+}
+
+
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+    .container {
+        margin: 20px;
+    }
+
+    .glass-input,
+    .glass-button {
+        width: 100%;
+    }
+}
