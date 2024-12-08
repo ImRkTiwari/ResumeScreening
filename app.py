@@ -1,87 +1,97 @@
-# app.py
-from flask import Flask, render_template, request
+import streamlit as st
+import pandas as pd
 import pickle
 import re
-import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from io import StringIO
+from docx import Document
+import PyPDF2
 
-app = Flask(__name__)
-
-# Loading Models
-KNClf = pickle.load(open('KNClf.pkl', 'rb'))
+# Load pre-trained models and vectorizer
 tfidf = pickle.load(open('tfidf.pkl', 'rb'))
+model = pickle.load(open('best_model.pkl', 'rb'))
+le = LabelEncoder()
 
-# Map category ID to category name
-category_mapping = {
-    0: "Advocate",
-    1: "Arts",
-    2: "Automation Testing",
-    3: "Blockchain",
-    4: "Business Analyst",
-    5: "Civil Engineer",
-    6: "Data Science",
-    7: "Database",
-    8: "DevOps Engineer",
-    9: "DotNet Developer",
-    10: "ETL Developer",
-    11: "Electrical Engineering",
-    12: "HR",
-    13: "Hadoop",
-    14: "Health and Fitness",
-    15: "Java Developer",
-    16: "Mechanical Engineer",
-    17: "Nework Security Engineer",
-    18: "Operation Manager",
-    19: "PMO",
-    20: "Python Developer",
-    21: "SAP Developer",
-    22: "Sales",
-    23: "Testing",    
-    24: "Web Designing"
-}
+# Streamlit UI Setup
+st.title("Resume Screening App")
+st.sidebar.title("Upload Your Resume")
 
-# Function to clean the input resume
+# Upload File Section
+uploaded_file = st.sidebar.file_uploader("Choose a file (PDF, Word, Text)", type=["pdf", "docx", "txt"])
 
-
-def clean_resume(txt):
-    cleantxt = re.sub('http\S+\s', ' ', txt)
+# Function to clean and preprocess the resume text
+def clean_resume(text):
+    cleantxt = re.sub('http\S+\s', ' ', text)
     cleantxt = re.sub('RT|cc', ' ', cleantxt)
     cleantxt = re.sub('#\S+\s', ' ', cleantxt)
     cleantxt = re.sub('@\S+', ' ', cleantxt)
-    cleantxt = re.sub('[%s]' % re.escape(
-        """!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""), '', cleantxt)
+    cleantxt = re.sub('[%s]' % re.escape("""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""), '', cleantxt)
     cleantxt = re.sub(r'[^\x00-\x7f]', ' ', cleantxt)
     cleantxt = re.sub('\s+', ' ', cleantxt)
-    return cleantxt
+    return cleantxt.strip()
 
-# Flask route for the home page
+# Function to extract text from a PDF
+def extract_text_from_pdf(pdf_file):
+    pdf_reader = PyPDF2.PdfReader(pdf_file)
+    text = ''
+    for page_num in range(len(pdf_reader.pages)):
+        text += pdf_reader.pages[page_num].extract_text()
+    return text
 
+# Function to extract text from a Word document
+def extract_text_from_docx(docx_file):
+    doc = Document(docx_file)
+    text = ''
+    for para in doc.paragraphs:
+        text += para.text
+    return text
 
-@app.route('/')
-def home():
-    return render_template('index.html', prediction=None)
+# Function to extract text from a text file
+def extract_text_from_txt(txt_file):
+    return txt_file.getvalue().decode("utf-8")
 
-# Flask route for handling resume submission and prediction
+# Process uploaded file
+if uploaded_file is not None:
+    file_extension = uploaded_file.name.split('.')[-1].lower()
 
+    if file_extension == 'pdf':
+        text = extract_text_from_pdf(uploaded_file)
+    elif file_extension == 'docx':
+        text = extract_text_from_docx(uploaded_file)
+    elif file_extension == 'txt':
+        text = extract_text_from_txt(uploaded_file)
+    else:
+        st.error("Unsupported file format. Please upload a PDF, DOCX, or TXT file.")
+        text = ""
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    if request.method == 'POST':
-        upload_file = request.files['file']
-        if upload_file:
-            try:
-                resume_bytes = upload_file.read()
-                resume_text = resume_bytes.decode('utf-8')
-            except UnicodeDecodeError:
-                # If UTF-8 decoding fails, try decoding with 'latin-1'
-                resume_text = resume_bytes.decode('latin-1')
+    # Clean the extracted resume text
+    cleaned_text = clean_resume(text)
 
-            cleaned_resume = clean_resume(resume_text)
-            input_features = tfidf.transform([cleaned_resume])
-            prediction_id = KNClf.predict(input_features)[0]
-            category_name = category_mapping.get(prediction_id, "Unknown")
-            return render_template('index.html', prediction=category_name)
+    if cleaned_text:
+        # Show the cleaned text
+        st.subheader("Resume Text")
+        st.text_area("Resume Content", cleaned_text, height=300)
 
+        # Vectorize the cleaned text using the loaded TF-IDF vectorizer
+        text_vectorized = tfidf.transform([cleaned_text])
 
-#if __name__ == '__main__':
-#    app.run(debug=True)
+        # Predict the category of the resume using the trained model
+        prediction = model.predict(text_vectorized)
+        predicted_category = le.inverse_transform(prediction)[0]
+
+        # Display the predicted category
+        st.subheader("Predicted Category")
+        st.write(predicted_category)
+
+        # Classification report for more details
+        st.subheader("Model Performance")
+        y_test = np.array([predicted_category])
+        y_pred = prediction
+        st.text_area("Classification Report", classification_report(y_test, y_pred, target_names=[predicted_category]), height=300)
+
+    else:
+        st.error("No text extracted from the resume. Please check the file format and content.")
